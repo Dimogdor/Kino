@@ -1,0 +1,27 @@
+[
+  {
+    "id": "x-mimic-2026",
+    "type": "film",
+    "short": true,
+    "collection": "trouvailles",
+    "section": "Courts métrages",
+    "title": { "fr": "MIMIC", "en": "MIMIC", "ru": "MIMIC" },
+    "originalTitle": "MIMIC",
+    "year": 2026,
+    "releaseDate": "2026-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [],
+    "region": "autres",
+    "genres": [27],
+    "moods": ["frisson"],
+    "overview": {
+      "fr": "Court métrage d'horreur en deux parties de la chaîne YouTube The Noctuary (@thenoctuaryfiles), réalisé avec l'IA.",
+      "en": "Two-part horror short from the YouTube channel The Noctuary (@thenoctuaryfiles), made with AI.",
+      "ru": "Короткометражный фильм ужасов в двух частях от YouTube-канала The Noctuary (@thenoctuaryfiles), созданный с помощью ИИ."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": ["web", "ia"]
+  }
+]
