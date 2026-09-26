@@ -36,7 +36,7 @@ jobs:
           mkdir -p _site/data
           cp index.html style.css app.js db.js modes.js i18n.js config.js sw.js manifest.webmanifest _site/
           cp -r icons _site/
-          cp data/catalogue.json _site/data/
+          cp -r data/catalogue.json data/resumes _site/data/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
       - id: deployment

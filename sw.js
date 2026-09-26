@@ -1,5 +1,5 @@
 // Service worker : garde l'interface et le catalogue en cache pour ouvrir Kino hors ligne.
-const CACHE = 'kino-v2';
+const CACHE = 'kino-v3';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'db.js', 'modes.js', 'i18n.js', 'config.js', 'data/catalogue.json', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

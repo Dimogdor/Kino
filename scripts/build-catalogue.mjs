@@ -1,6 +1,6 @@
 // Génère data/catalogue.json à partir de data/titles.json grâce à l'API TMDB.
 // Lancement : TMDB_KEY=xxxx node scripts/build-catalogue.mjs   (Node 18 ou plus, aucune dépendance)
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const KEY = process.env.TMDB_KEY;
 if (!KEY) {
@@ -35,6 +35,8 @@ const REGIONS = {
   'asie-sud-est': 'TH VN KH LA MM MY SG ID PH BN TL',
   oceanie: 'AU NZ PG FJ',
 };
+// Langues de l'interface et langue TMDB correspondante (titres et résumés)
+const LANGS = { en: 'en-US', fr: 'fr-FR', ru: 'ru-RU', es: 'es-ES', it: 'it-IT', ar: 'ar-SA', pt: 'pt-BR', de: 'de-DE' };
 const regionOf = code => Object.keys(REGIONS).find(r => REGIONS[r].split(' ').includes(code)) || 'autres';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -122,11 +124,12 @@ async function choose(list, t, kind) {
 
 // Construit l'entrée du catalogue à partir des détails TMDB en trois langues
 async function buildEntry(t, kind, id) {
-  const fr = await details(kind, id, 'fr-FR');
-  const en = await details(kind, id, 'en-US');
-  const ru = await details(kind, id, 'ru-RU');
-  if (!fr || !en || !ru) return null;
-  const name = d => (kind === 'movie' ? d.title : d.name);
+  const d = {};
+  for (const [l, code] of Object.entries(LANGS)) d[l] = await details(kind, id, code);
+  if (Object.values(d).some(x => !x)) return null;
+  const { fr, en } = d;
+  const name = x => (kind === 'movie' ? x.title : x.name);
+  const perLang = get => Object.fromEntries(Object.keys(LANGS).map(l => [l, get(d[l]) || '']));
   return {
     id: `${kind === 'movie' ? 'm' : 't'}${id}`,
     tmdbId: id,
@@ -135,7 +138,7 @@ async function buildEntry(t, kind, id) {
     short: t.short,
     collection: t.collection,
     section: t.section,
-    title: { fr: name(fr), en: name(en), ru: name(ru) },
+    title: perLang(name),
     originalTitle: kind === 'movie' ? en.original_title : en.original_name,
     year: t.year,
     releaseDate: (kind === 'movie' ? en.release_date : en.first_air_date) || null,
@@ -144,7 +147,7 @@ async function buildEntry(t, kind, id) {
     countries: en.origin_country?.length ? en.origin_country : (en.production_countries || []).map(c => c.iso_3166_1),
     genres: (en.genres || []).map(g => g.id),
     moods: t.moodsPlus,
-    overview: { fr: fr.overview || '', en: en.overview || '', ru: ru.overview || '' },
+    overview: perLang(x => x.overview),
     poster: fr.poster_path || en.poster_path || null,
     rating: en.vote_average ? Math.round(en.vote_average * 10) / 10 : null,
     tags: t.tags,
@@ -201,7 +204,13 @@ for (const [i, t] of titles.entries()) {
 catalogue.push(...manual.map(complete));
 catalogue.sort((a, b) => (a.title.fr || a.originalTitle).localeCompare(b.title.fr || b.originalTitle, 'fr'));
 
-writeFileSync('data/catalogue.json', JSON.stringify(catalogue) + '\n');
+// Les résumés partent dans un fichier par langue (data/resumes/<langue>.json), chargé seulement pour la langue choisie
+mkdirSync('data/resumes', { recursive: true });
+for (const l of Object.keys(LANGS)) {
+  const texts = Object.fromEntries(catalogue.filter(e => e.overview?.[l]).map(e => [e.id, e.overview[l]]));
+  writeFileSync(`data/resumes/${l}.json`, JSON.stringify(texts) + '\n');
+}
+writeFileSync('data/catalogue.json', JSON.stringify(catalogue.map(({ overview, ...e }) => e)) + '\n');
 writeFileSync('data/unresolved.txt', unresolved.map(k => k + '\n').join(''));
 
 console.log(`

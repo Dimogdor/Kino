@@ -4,9 +4,10 @@ import * as M from './modes.js';
 import { firebaseConfig, tmdbKey } from './config.js';
 
 const IMG = 'https://image.tmdb.org/t/p/';
-const TMDB_LANG = { fr: 'fr-FR', en: 'en-US', ru: 'ru-RU' };
 const EMOJIS = ['😀', '😎', '🤓', '🥰', '😈', '👻', '🤖', '👽', '🐱', '🐶', '🦊', '🐼', '🐸', '🦄', '🐙', '🌵', '🌸', '🍕', '🍿', '🎸', '⚽', '🚀', '🌙', '🔥'];
-const WATCH_COUNTRIES = ['FR', 'BE', 'CH', 'LU', 'CA', 'GB', 'US', 'DE', 'ES', 'IT', 'RU', 'MA'];
+const WATCH_COUNTRIES = ['FR', 'BE', 'CH', 'LU', 'CA', 'GB', 'IE', 'US', 'DE', 'AT', 'ES', 'IT', 'PT', 'BR', 'MX', 'AR', 'RU', 'MA', 'DZ', 'TN', 'EG', 'SA', 'AE'];
+const LANG_FLAG = { fr: '🇫🇷', en: '🇬🇧', es: '🇪🇸', it: '🇮🇹', pt: '🇵🇹', de: '🇩🇪', ru: '🇷🇺', ar: '🇸🇦' };
+const DEFAULT_COUNTRY = { fr: 'FR', en: 'US', es: 'ES', it: 'IT', pt: 'PT', de: 'DE', ru: 'RU', ar: 'SA' };
 const MODE_ICON = { swipe: '👆', duel: '⚔️', roulette: '🎡' };
 const TABS = { tonight: '🎬', catalogue: '📚', history: '🕘', group: '👥' };
 const OLD_COUNTRIES = ['SU', 'XC', 'YU', 'XG', 'ZR'];
@@ -58,6 +59,9 @@ const S = {
   pending: false,
   pendingJoin: null,
   onboard: !store.get('kino.onboarded', false),
+  tutorial: store.get('kino.tutorial', false) ? null : 0, // écran du tutoriel affiché, ou null
+  tutoDir: 'fwd',
+  view: '',
 };
 
 // ---------- Titres ----------
@@ -73,11 +77,25 @@ function allTitles() {
 const reindex = () => (byId = new Map(allTitles().map(x => [x.id, x])));
 const title = id => byId.get(id) || { id, title: {}, originalTitle: '?', moods: [], countries: [], genres: [] };
 const nameOf = x => x.title?.[lang] || x.title?.en || x.originalTitle || '';
-const overviewOf = x => x.overview?.[lang] || x.overview?.en || '';
+// Résumés : un fichier par langue, chargé en arrière-plan (les titres ajoutés par le groupe gardent le leur)
+const resumes = {};
+async function loadResumes(l) {
+  if (resumes[l]) return;
+  resumes[l] = {};
+  try {
+    const res = await fetch(`data/resumes/${l}.json`);
+    if (!res.ok) throw new Error(res.status);
+    resumes[l] = await res.json();
+    render();
+  } catch {
+    delete resumes[l];
+  }
+}
+const overviewOf = x => x.overview?.[lang] || resumes[lang]?.[x.id] || x.overview?.en || resumes.en?.[x.id] || '';
 const moodsOf = x => S.group?.moods?.[x.id] || x.moods || [];
 const rankOf = id => (rank.has(id) ? rank.get(id) : rank.set(id, Math.random()).get(id)); // nouveau mélange à chaque ouverture
 function searchKey(x) {
-  if (!searchKeys.has(x.id)) searchKeys.set(x.id, M.normalize([x.title?.fr, x.title?.en, x.title?.ru, x.originalTitle].join(' ')));
+  if (!searchKeys.has(x.id)) searchKeys.set(x.id, M.normalize([...Object.values(x.title || {}), x.originalTitle].join(' ')));
   return searchKeys.get(x.id);
 }
 
@@ -104,7 +122,13 @@ const dateText = ts => (ts ? new Intl.DateTimeFormat(lang, { dateStyle: 'medium'
 const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const flag = code => (/^[A-Z]{2}$/.test(code) && !OLD_COUNTRIES.includes(code) ? String.fromCodePoint(...[...code].map(c => 0x1f1a5 + c.charCodeAt(0))) : '');
 const decadeText = d => t('fmt.decade', { d });
-const country = () => store.get('kino.country', 'FR');
+// Pays pour « Où le voir » : réglage, sinon celui du téléphone, sinon celui de la langue
+const phoneCountry = l => {
+  const [code, region] = (navigator.language || '').toUpperCase().split('-');
+  return code === l.toUpperCase() && WATCH_COUNTRIES.includes(region) ? region : DEFAULT_COUNTRY[l];
+};
+const country = () => store.get('kino.country', phoneCountry(lang));
+const buzz = () => navigator.vibrate?.(12); // petit retour haptique (Android)
 // Chemin d'image TMDB (« /abc123.jpg ») ; tout autre texte est refusé
 const img = path => (/^\/[\w.-]+$/.test(path || '') ? path : null);
 
@@ -122,9 +146,10 @@ function countryName(code) {
   try { return new Intl.DisplayNames([lang], { type: 'region' }).of(code); } catch { return code; }
 }
 
-const meta = x => esc(
+// Chaque élément est isolé (<bdi>) pour rester lisible en arabe, de droite à gauche
+const meta = x =>
   [x.year, x.type === 'serie' ? t('fiche.seasons', { n: x.seasons || '?' }) : runtimeText(x.runtime), x.type === 'serie' ? t('badge.serie') : '']
-    .filter(Boolean).join(' · '));
+    .filter(Boolean).map(p => `<bdi>${esc(p)}</bdi>`).join(' · ');
 
 function poster(x, size = 'w342') {
   return img(x.poster)
@@ -180,10 +205,13 @@ function render() {
   S.pending = false;
   const sheetTop = $('.sheet')?.scrollTop || 0;
   document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const intro = S.onboard || S.tutorial !== null;
   $('#top').innerHTML = topBar();
   $('#banners').innerHTML = banners();
-  $('#main').innerHTML = S.onboard ? onboardView() : VIEWS[S.tab]();
-  document.body.classList.toggle('onboarding', S.onboard);
+  $('#main').innerHTML = S.onboard ? onboardView() : intro ? tutoView() : VIEWS[S.tab]();
+  document.body.classList.toggle('onboarding', intro);
+  animateView(S.onboard ? 'onboard' : intro ? `tuto${S.tutorial}` : `${S.tab}:${S.openSession || ''}:${!!S.launch}:${!!S.join}`);
   $('#nav').innerHTML = navBar();
   $('#sheet').innerHTML = S.sheet ? SHEETS[S.sheet.type]() : '';
   if (sheetTop && $('.sheet')) $('.sheet').scrollTop = sheetTop;
@@ -205,18 +233,62 @@ function banners() {
   return html;
 }
 
+// Petite animation d'entrée quand on change d'écran (pas à chaque mise à jour en temps réel)
+function animateView(key) {
+  if (key === S.view) return;
+  const main = $('#main');
+  main.classList.remove('enter', 'fwd', 'back');
+  void main.offsetWidth;
+  main.classList.add('enter', S.tutoDir);
+  S.view = key;
+  clearTimeout(animateView.timer);
+  animateView.timer = setTimeout(() => main.classList.remove('enter'), 400);
+}
+
 // Premier lancement : langue de l'appli et pays pour « Où le voir »
-const DEFAULT_COUNTRY = { fr: 'FR', ru: 'RU', en: 'US' };
 const onboardView = () => `<section class="onboard">
   <div class="logo-big">🎬</div>
   <h1>Kino</h1>
-  <p class="muted">Bienvenue · Welcome · Добро пожаловать</p>
+  <p class="muted">Bienvenue · Welcome · Bienvenido · Willkommen · Добро пожаловать · أهلاً</p>
   <h3>${t('onboard.lang')}</h3>
-  <div class="lang-pick">${LANGS.map(l => `<button class="lang-btn ${l === lang ? 'on' : ''}" data-act="onboard-lang" data-v="${l}">
-    <span>${{ en: '🇬🇧', fr: '🇫🇷', ru: '🇷🇺' }[l]}</span>${t('langs.' + l)}</button>`).join('')}</div>
+  <div class="lang-pick">${LANGS.map(l => `<button class="lang-btn ${l === lang ? 'on' : ''}" data-act="onboard-lang" data-v="${l}" lang="${l}">
+    <span>${LANG_FLAG[l]}</span>${t('langs.' + l)}</button>`).join('')}</div>
   <label>${t('settings.country')}<select data-change="country">${options(WATCH_COUNTRIES, country(), c => `${flag(c)} ${countryName(c)}`)}</select></label>
   <button class="btn primary big" data-act="onboard-done">${t('onboard.go')}</button>
 </section>`;
+
+// Tutoriel : écrans à faire défiler (bouton ou glissement), relançable depuis Ce soir et Groupe
+const ILLU = {
+  swipe: '<div class="illu illu-swipe"><div class="mini-card back"></div><div class="mini-card front"><b class="yes">♥</b><b class="no">✕</b></div></div>',
+  duel: '<div class="illu illu-duel"><div class="mini-card a"></div><span>VS</span><div class="mini-card b"></div></div>',
+  roulette: `<div class="illu illu-roulette"><div class="strip">${'<div class="mini-card"></div>'.repeat(12)}</div></div>`,
+};
+
+function tutoView() {
+  const steps = t('tuto.steps');
+  const i = S.tutorial;
+  const step = steps[i];
+  const last = i === steps.length - 1;
+  return `<section class="tuto">
+    <div class="tuto-top"><span class="muted small" dir="ltr">${i + 1} / ${steps.length}</span><button class="link" data-act="tuto-done">${t('tuto.skip')}</button></div>
+    <div class="tuto-slide">
+      ${step.illu ? ILLU[step.illu] : `<div class="tuto-icon">${step.icon}</div>`}
+      <h2>${step.illu ? step.icon + ' ' : ''}${esc(step.title)}</h2>
+      ${step.text.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}
+    </div>
+    <div class="tuto-dots">${steps.map((_, k) => `<button class="tuto-dot ${k === i ? 'on' : ''}" data-act="tuto-go" data-v="${k}" aria-label="${k + 1}"></button>`).join('')}</div>
+    <div class="row">${i ? `<button class="btn" data-act="tuto-go" data-v="${i - 1}" aria-label="${t('back')}">‹</button>` : ''}
+      <button class="btn primary big" data-act="${last ? 'tuto-done' : 'tuto-go'}" data-v="${i + 1}">${t(last ? 'tuto.start' : 'tuto.next')}</button></div>
+  </section>`;
+}
+
+function goToStep(k) {
+  const steps = t('tuto.steps');
+  if (k < 0 || k >= steps.length) return;
+  S.tutoDir = k < S.tutorial ? 'back' : 'fwd';
+  S.tutorial = k;
+  render();
+}
 
 const toRate = () => S.history.filter(e => e.participants.includes(S.mid) && e.status === 'vu' && !e.ratings?.[S.mid]);
 
@@ -261,6 +333,7 @@ function tonightView() {
       <div class="logo">🍿</div>
       ${chooser ? `<p class="turn">${t('turn', { name: `${esc(chooser.emoji)} ${esc(chooser.name)}` })}</p>` : ''}
       <button class="btn primary big" data-act="launch-open">${t('launch.open')}</button>
+      <button class="link" data-act="tuto-open">💡 ${t('tuto.help')}</button>
     </section>`;
 }
 
@@ -271,12 +344,14 @@ const liveCard = s => `<div class="live-card">
 function setupView() {
   const message = { off: t('setup.firebase'), connecting: t('setup.connecting'), error: t('setup.error') }[S.dbState];
   return `<section class="welcome"><div class="logo">🎬</div><h1>Kino</h1><p>${t('welcome.tagline')}</p>
-    <p class="muted">${message}</p><button class="btn" data-act="tab" data-tab="catalogue">${t('setup.browse')}</button></section>`;
+    <p class="muted">${message}</p><button class="btn" data-act="tab" data-tab="catalogue">${t('setup.browse')}</button>
+    <button class="link" data-act="tuto-open">💡 ${t('tuto.help')}</button></section>`;
 }
 
 const welcomeView = () => `<section class="welcome"><div class="logo">🎬</div><h1>Kino</h1><p>${t('welcome.tagline')}</p>
   <button class="btn primary big" data-act="create-open">${t('welcome.create')}</button>
-  <button class="btn big" data-act="link-open">${t('welcome.haveLink')}</button></section>`;
+  <button class="btn big" data-act="link-open">${t('welcome.haveLink')}</button>
+  <button class="link" data-act="tuto-open">💡 ${t('tuto.help')}</button></section>`;
 
 function joinView() {
   const J = S.join;
@@ -522,6 +597,7 @@ async function swipe(yes) {
   const swipes = { ...(v.swipe || {}), [id]: yes };
   const done = s.pool.every(x => x in swipes);
   S.votes = { ...S.votes, [S.mid]: { ...v, swipe: swipes, swipeDone: done } };
+  buzz();
   render();
   await S.db.vote(S.gid, s.id, S.mid, done ? { swipe: { [id]: yes }, swipeDone: true } : { swipe: { [id]: yes } });
 }
@@ -531,6 +607,7 @@ async function duelVote(i, id) {
   const r = s.round;
   const v = S.votes[S.mid] || {};
   S.votes = { ...S.votes, [S.mid]: { ...v, duel: { ...(v.duel || {}), [r]: { ...(v.duel?.[r] || {}), [i]: id } } } };
+  buzz();
   render();
   await S.db.vote(S.gid, s.id, S.mid, { duel: { [r]: { [i]: id } } });
 }
@@ -668,7 +745,7 @@ function titleSheet() {
     ? [t('fiche.seasons', { n: x.seasons || '?' }), x.runtime ? t('fiche.episode', { d: runtimeText(x.runtime) }) : ''].filter(Boolean).join(' · ')
     : runtimeText(x.runtime);
   const facts = [x.originalTitle && x.originalTitle !== nameOf(x) ? `<i>${esc(x.originalTitle)}</i>` : '', esc(x.year), esc(length), x.rating ? `★ ${num(x.rating)} TMDB` : '']
-    .filter(Boolean).join(' · ');
+    .filter(Boolean).map(p => `<bdi>${p}</bdi>`).join(' · ');
   const countries = (x.countries || []).map(c => `${flag(c)} ${esc(countryName(c))}`).join(', ');
   const genres = (x.genres || []).map(g => t('genres')[g]).filter(Boolean).join(', ');
   const faces = list => list.map(p => `<span title="${esc(p.name)}">${esc(p.emoji)}</span>`).join(' ') || '—';
@@ -768,7 +845,7 @@ function searchTmdb(q) {
     if (!q.trim()) S.sheet.results = null;
     else {
       try {
-        const data = await tmdbGet('/search/multi', { query: q, language: TMDB_LANG[lang], include_adult: 'false' });
+        const data = await tmdbGet('/search/multi', { query: q, language: M.TMDB_LANGS[lang], include_adult: 'false' });
         if (S.sheet?.type !== 'add' || S.sheet.q !== q) return;
         S.sheet.results = data.results.filter(r => r.media_type === 'movie' || r.media_type === 'tv').slice(0, 20);
       } catch {
@@ -786,8 +863,8 @@ async function addFromTmdb(kind, tmdbId) {
     return openTitle(id);
   }
   const details = {};
-  for (const l of LANGS) details[l] = await tmdbGet(`/${kind}/${tmdbId}`, { language: TMDB_LANG[l] });
-  await saveNewTitle(M.tmdbEntry(kind, details.fr, details.en, details.ru));
+  await Promise.all(Object.entries(M.TMDB_LANGS).map(async ([l, code]) => (details[l] = await tmdbGet(`/${kind}/${tmdbId}`, { language: code }))));
+  await saveNewTitle(M.tmdbEntry(kind, details));
 }
 
 async function saveNewTitle(entry) {
@@ -849,8 +926,9 @@ function statsView() {
 
 function groupView() {
   const settings = `<section><h3>${t('settings.title')}</h3>
-    <label>${t('settings.lang')}<select data-change="lang">${options(LANGS, lang, l => t('langs.' + l))}</select></label>
+    <label>${t('settings.lang')}<select data-change="lang">${options(LANGS, lang, l => `${LANG_FLAG[l]} ${t('langs.' + l)}`)}</select></label>
     ${tmdbKey ? `<label>${t('settings.country')}<select data-change="country">${options(WATCH_COUNTRIES, country(), c => `${flag(c)} ${countryName(c)}`)}</select></label>` : ''}
+    <button class="btn" data-act="tuto-open">📖 ${t('tuto.again')}</button>
   </section>`;
   const about = `<section class="about"><h3>${t('about.title')}</h3>
     <p>${t('about.text')}</p>
@@ -1062,8 +1140,23 @@ const ACTIONS = {
   open: el => openTitle(el.dataset.id),
   'onboard-lang': el => {
     setLang(el.dataset.v);
-    store.set('kino.country', DEFAULT_COUNTRY[el.dataset.v]);
+    loadResumes(el.dataset.v);
+    store.set('kino.country', phoneCountry(el.dataset.v));
     render();
+  },
+  'tuto-go': el => goToStep(+el.dataset.v),
+  'tuto-open': () => {
+    S.tutoDir = 'fwd';
+    S.tutorial = 0;
+    render();
+    scrollTo(0, 0);
+  },
+  'tuto-done': () => {
+    store.set('kino.tutorial', true);
+    S.tutorial = null;
+    S.tutoDir = 'fwd';
+    render();
+    scrollTo(0, 0);
   },
   'onboard-done': () => {
     store.set('kino.onboarded', true);
@@ -1274,6 +1367,7 @@ const CHANGES = {
   },
   lang: el => {
     setLang(el.value);
+    loadResumes(el.value);
     render();
   },
   country: el => {
@@ -1356,6 +1450,13 @@ function wireEvents() {
   document.addEventListener('pointerdown', e => {
     const el = e.target.closest('.swipe-card');
     if (el && e.button === 0) startDrag(el, e);
+    if (e.target.closest('.tuto-slide')) {
+      const x0 = e.clientX;
+      addEventListener('pointerup', ev => {
+        const dx = (ev.clientX - x0) * (lang === 'ar' ? -1 : 1);
+        if (Math.abs(dx) > 50) goToStep(S.tutorial + (dx < 0 ? 1 : -1));
+      }, { once: true });
+    }
   });
   document.addEventListener('focusout', () => setTimeout(() => S.pending && render()));
   addEventListener('popstate', () => {
@@ -1385,6 +1486,7 @@ async function loadCatalogue() {
     S.loaded = true;
     reindex();
     render();
+    loadResumes(lang).then(() => loadResumes('en'));
   } catch {
     setTimeout(loadCatalogue, 5000); // nouvelle tentative automatique
   }

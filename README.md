@@ -11,7 +11,7 @@ Pas de streaming, pas de liens. Site statique gratuit (GitHub Pages) + Firebase 
 | `app.js` | interface : écrans, navigation, actions |
 | `db.js` | Firebase : groupes, membres, soirées, votes, historique (temps réel) |
 | `modes.js` | logique pure : réserve, Swipe, Duel, Roulette, Joker, tour de rôle, statistiques |
-| `i18n.js` | textes en anglais, français et russe |
+| `i18n.js` | textes en 8 langues : français, anglais, espagnol, italien, portugais, allemand, russe, arabe (+ tutoriel) |
 | `config.js` | vide dans le dépôt, rempli au déploiement depuis les secrets GitHub |
 | `firestore.rules` | règles de sécurité à coller dans Firebase |
 | `scripts/write-config.mjs`, `.github/workflows/` | déploiement automatique et régénération du catalogue |
@@ -68,6 +68,8 @@ Menu du navigateur → **Ajouter à l'écran d'accueil** pour l'installer comme 
 - **TMDB** : clé en lecture seule ; en cas d'abus, régénère-la sur themoviedb.org et mets à jour le secret `TMDB_KEY`.
 
 ## Utilisation au quotidien
+
+- **Premier lancement** : choix de la langue (celle du téléphone est proposée), puis un tutoriel de 9 écrans qui explique le groupe, le catalogue et les 3 jeux. On peut le revoir à tout moment : « 💡 Comment ça marche ? » dans Ce soir, ou onglet Groupe → « Revoir le tutoriel ».
 
 - **Ajouter un film vu sur Instagram** : Catalogue → bouton **+** → tape le titre → touche le bon résultat. Il est ajouté au groupe et mis en ❤️ envie.
 - **Rejoindre depuis un nouveau téléphone** : ouvre le lien d'invitation → « C'est moi : [prénom] ».

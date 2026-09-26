@@ -3,6 +3,10 @@
 
 export const MOODS = ['rire', 'frisson', 'tension', 'emotion', 'amour', 'evasion', 'action', 'apprendre', 'animation', 'famille'];
 export const MOOD_EMOJI = { rire: '😂', frisson: '😱', tension: '🔪', emotion: '😢', amour: '💘', evasion: '🚀', action: '💥', apprendre: '🧠', animation: '🎨', famille: '🧸' };
+// Langues de l'interface → langue TMDB (titres, résumés, recherche)
+export const TMDB_LANGS = { en: 'en-US', fr: 'fr-FR', ru: 'ru-RU', es: 'es-ES', it: 'it-IT', ar: 'ar-SA', pt: 'pt-BR', de: 'de-DE' };
+const perLang = get => Object.fromEntries(Object.keys(TMDB_LANGS).map(l => [l, get(l)]));
+
 export const COLLECTIONS = ['trouvailles', 'classiques', 'monde', 'niches', 'courts', 'culture', 'series', 'ajouts'];
 
 // Humeurs calculées depuis les genres TMDB (section 7.6)
@@ -55,9 +59,10 @@ export function completeEntry(e) {
   };
 }
 
-// Entrée de catalogue à partir des détails TMDB en français, anglais et russe
-export function tmdbEntry(kind, fr, en, ru) {
-  const name = d => (kind === 'movie' ? d.title : d.name);
+// Entrée de catalogue à partir des détails TMDB dans chaque langue : d = { en: {…}, fr: {…}, … }
+export function tmdbEntry(kind, d) {
+  const { en, fr } = d;
+  const name = x => (kind === 'movie' ? x?.title : x?.name) || '';
   const date = (kind === 'movie' ? en.release_date : en.first_air_date) || null;
   const runtime = (kind === 'movie' ? en.runtime : en.episode_run_time?.[0] || en.last_episode_to_air?.runtime) || (kind === 'tv' ? 45 : null);
   return completeEntry({
@@ -68,7 +73,7 @@ export function tmdbEntry(kind, fr, en, ru) {
     short: false,
     collection: 'ajouts',
     section: '',
-    title: { fr: name(fr), en: name(en), ru: name(ru) },
+    title: perLang(l => name(d[l])),
     originalTitle: kind === 'movie' ? en.original_title : en.original_name,
     year: date ? +date.slice(0, 4) : null,
     releaseDate: date,
@@ -77,7 +82,7 @@ export function tmdbEntry(kind, fr, en, ru) {
     countries: en.origin_country?.length ? en.origin_country : (en.production_countries || []).map(c => c.iso_3166_1),
     genres: (en.genres || []).map(g => g.id),
     moods: [],
-    overview: { fr: fr.overview || '', en: en.overview || '', ru: ru.overview || '' },
+    overview: perLang(l => d[l]?.overview || ''),
     poster: fr.poster_path || en.poster_path || null,
     rating: en.vote_average ? Math.round(en.vote_average * 10) / 10 : null,
     tags: [],
@@ -92,7 +97,7 @@ export function manualEntry({ title, year, type, short }) {
     short,
     collection: 'ajouts',
     section: '',
-    title: { fr: title, en: title, ru: title },
+    title: perLang(() => title),
     originalTitle: title,
     year,
     releaseDate: `${year}-01-01`,
@@ -101,7 +106,7 @@ export function manualEntry({ title, year, type, short }) {
     countries: [],
     genres: [],
     moods: [],
-    overview: { fr: '', en: '', ru: '' },
+    overview: perLang(() => ''),
     poster: null,
     rating: null,
     tags: [],
