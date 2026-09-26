@@ -1,0 +1,43 @@
+# Publie le site sur GitHub Pages ; config.js est rempli avec les secrets du dépôt.
+name: Déployer le site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Régénérer le catalogue]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Écrire config.js depuis les secrets
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: node scripts/write-config.mjs
+      - name: Garder seulement les fichiers du site
+        run: |
+          mkdir -p _site/data
+          cp index.html style.css app.js db.js modes.js i18n.js config.js sw.js manifest.webmanifest _site/
+          cp -r icons _site/
+          cp data/catalogue.json _site/data/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4

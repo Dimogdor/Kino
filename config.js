@@ -1,5 +1,5 @@
-// Clés publiques du projet (voir README.md, étapes 2 et 3).
-// Tant que firebaseConfig.apiKey est vide, l'appli fonctionne en mode « catalogue seul ».
+// Laissé vide dans le dépôt : GitHub Actions le remplit au déploiement avec les secrets
+// FIREBASE_CONFIG et TMDB_KEY (voir README). Vide = mode « catalogue seul ».
 
 // Firebase → Paramètres du projet → Vos applications → Application Web → firebaseConfig
 export const firebaseConfig = {

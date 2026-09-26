@@ -1,1 +1,8 @@
-{}
+{
+  "film|Le Retour|2003": { "tmdbId": 11190, "tmdbType": "movie" },
+  "film|Boy|2010": { "tmdbId": 39356, "tmdbType": "movie" },
+  "film|Bear Story|2014": { "tmdbId": 351981, "tmdbType": "movie" },
+  "film|L'Affaire Bojarski|2021": { "tmdbId": 1376415, "tmdbType": "movie" },
+  "film|Le Repentir|1984": { "tmdbId": 96920, "tmdbType": "movie" },
+  "film|Dimensions du dialogue|1982": { "tmdbId": 19035, "tmdbType": "movie" }
+}

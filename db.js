@@ -198,7 +198,8 @@ export async function exportGroup(gid) {
 
 // Restaure un fichier dans le groupe courant (les documents du fichier remplacent ceux qui ont le même identifiant)
 export async function importGroup(gid, data) {
-  const writes = [[groupRef(gid), data.group], ...NAMES.flatMap(name => (data[name] || []).map(({ id, ...rest }) => [ref(gid, name, id), rest]))];
+  // Les titres ajoutés gardent leur champ « id » ; pour les autres documents, l'identifiant n'est que le nom du document
+  const writes = [[groupRef(gid), data.group], ...NAMES.flatMap(name => (data[name] || []).map(({ id, ...rest }) => [ref(gid, name, id), name === 'titles' ? { id, ...rest } : rest]))];
   for (let i = 0; i < writes.length; i += 400) {
     const batch = writeBatch(fs);
     writes.slice(i, i + 400).forEach(([r, d]) => batch.set(r, fromPlain(d)));

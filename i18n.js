@@ -6,6 +6,7 @@ const langs = { en: 'English', fr: 'Français', ru: 'Русский' };
 const dict = {
   en: {
     langs,
+    onboard: { lang: 'Choose your language', go: 'Start' },
     tab: { tonight: 'Tonight', catalogue: 'Catalogue', history: 'History', group: 'Group' },
     all: 'all', allOption: 'All', any: 'Any length', back: 'Back', cancel: 'Cancel', close: 'Close', save: 'Save', saved: 'Saved', loading: 'Loading…',
     offline: 'Offline — retrying automatically',
@@ -74,6 +75,7 @@ const dict = {
 
   fr: {
     langs,
+    onboard: { lang: 'Choisis ta langue', go: "C'est parti" },
     tab: { tonight: 'Ce soir', catalogue: 'Catalogue', history: 'Historique', group: 'Groupe' },
     all: 'toutes', allOption: 'Tout', any: 'Peu importe', back: 'Retour', cancel: 'Annuler', close: 'Fermer', save: 'Enregistrer', saved: 'Enregistré', loading: 'Chargement…',
     offline: 'Hors connexion — nouvelle tentative automatique',
@@ -142,6 +144,7 @@ const dict = {
 
   ru: {
     langs,
+    onboard: { lang: 'Выбери язык', go: 'Поехали' },
     tab: { tonight: 'Сегодня', catalogue: 'Каталог', history: 'История', group: 'Группа' },
     all: 'все', allOption: 'Все', any: 'Не важно', back: 'Назад', cancel: 'Отмена', close: 'Закрыть', save: 'Сохранить', saved: 'Сохранено', loading: 'Загрузка…',
     offline: 'Нет соединения — повторная попытка автоматически',
@@ -222,6 +225,7 @@ const lookup = (l, key) => key.split('.').reduce((o, k) => o?.[k], dict[l]);
 
 // t('cle.sous-cle', { variable }) : texte dans la langue courante, sinon en anglais
 export function t(key, vars = {}) {
-  const value = lookup(lang, key) ?? lookup('en', key) ?? key;
+  // Clé inconnue (donnée corrompue) : on n'affiche que des caractères sûrs
+  const value = lookup(lang, key) ?? lookup('en', key) ?? String(key).replace(/[^\w.-]/g, '');
   return typeof value === 'string' ? value.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '') : value;
 }

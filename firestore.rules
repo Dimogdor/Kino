@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Règles de sécurité Kino : à coller dans Firebase → Firestore Database → Règles → Publier.
+// Principe : l'identifiant du groupe (dans le lien d'invitation) est la clé secrète.
+// On peut lire un groupe dont on connaît l'identifiant, mais jamais lister les groupes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function text(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+    function validGroup() {
+      let d = request.resource.data;
+      return text(d.name, 40) && d.hidden is list && d.hidden.size() <= 3000 && d.keys().size() <= 10;
+    }
+    function validMember() {
+      let d = request.resource.data;
+      return text(d.name, 20) && text(d.emoji, 16) && d.order is int && d.wants is list && d.seen is list
+        && d.wants.size() <= 3000 && d.seen.size() <= 3000 && d.keys().size() <= 10;
+    }
+
+    match /groups/{groupId} {
+      allow get: if signedIn();
+      allow list, delete: if false;
+      allow create, update: if signedIn() && validGroup();
+
+      match /members/{memberId} {
+        allow read, delete: if signedIn();
+        allow create, update: if signedIn() && validMember();
+      }
+
+      match /titles/{titleId} {
+        allow read, delete: if signedIn();
+        allow create, update: if signedIn() && request.resource.data.keys().size() <= 30
+          && text(request.resource.data.id, 120) && request.resource.data.id == titleId;
+      }
+
+      match /history/{entryId} {
+        allow read, delete: if signedIn();
+        allow create, update: if signedIn() && request.resource.data.keys().size() <= 15;
+      }
+
+      match /sessions/{sessionId} {
+        allow read, delete: if signedIn();
+        allow create, update: if signedIn() && request.resource.data.keys().size() <= 40;
+
+        match /votes/{memberId} {
+          allow read, write: if signedIn();
+        }
+      }
+    }
+  }
+}

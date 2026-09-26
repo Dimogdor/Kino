@@ -5,7 +5,11 @@
     "short": true,
     "collection": "trouvailles",
     "section": "Courts métrages",
-    "title": { "fr": "MIMIC", "en": "MIMIC", "ru": "MIMIC" },
+    "title": {
+      "fr": "MIMIC",
+      "en": "MIMIC",
+      "ru": "MIMIC"
+    },
     "originalTitle": "MIMIC",
     "year": 2026,
     "releaseDate": "2026-01-01",
@@ -13,8 +17,12 @@
     "seasons": null,
     "countries": [],
     "region": "autres",
-    "genres": [27],
-    "moods": ["frisson"],
+    "genres": [
+      27
+    ],
+    "moods": [
+      "frisson"
+    ],
     "overview": {
       "fr": "Court métrage d'horreur en deux parties de la chaîne YouTube The Noctuary (@thenoctuaryfiles), réalisé avec l'IA.",
       "en": "Two-part horror short from the YouTube channel The Noctuary (@thenoctuaryfiles), made with AI.",
@@ -22,6 +30,337 @@
     },
     "poster": null,
     "rating": null,
-    "tags": ["web", "ia"]
+    "tags": [
+      "web",
+      "ia"
+    ]
+  },
+  {
+    "id": "x-le-figurant-2014",
+    "type": "film",
+    "short": true,
+    "collection": "courts",
+    "section": "Les Parasites (France, YouTube)",
+    "title": {
+      "fr": "Le Figurant",
+      "en": "Le Figurant",
+      "ru": "Le Figurant"
+    },
+    "originalTitle": "Le Figurant",
+    "year": 2014,
+    "releaseDate": "2014-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "FR"
+    ],
+    "region": "france",
+    "genres": [
+      35
+    ],
+    "moods": [
+      "rire"
+    ],
+    "overview": {
+      "fr": "Court métrage de la chaîne YouTube Les Parasites.",
+      "en": "Short film from the French YouTube channel Les Parasites.",
+      "ru": "Короткометражка французского YouTube-канала Les Parasites."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-symptomes-d-amour-2014",
+    "type": "film",
+    "short": true,
+    "collection": "courts",
+    "section": "Les Parasites (France, YouTube)",
+    "title": {
+      "fr": "Symptômes d'amour",
+      "en": "Symptômes d'amour",
+      "ru": "Symptômes d'amour"
+    },
+    "originalTitle": "Symptômes d'amour",
+    "year": 2014,
+    "releaseDate": "2014-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "FR"
+    ],
+    "region": "france",
+    "genres": [
+      35
+    ],
+    "moods": [
+      "rire"
+    ],
+    "overview": {
+      "fr": "Court métrage de la chaîne YouTube Les Parasites.",
+      "en": "Short film from the French YouTube channel Les Parasites.",
+      "ru": "Короткометражка французского YouTube-канала Les Parasites."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-papier-prout-2015",
+    "type": "film",
+    "short": true,
+    "collection": "courts",
+    "section": "Les Parasites (France, YouTube)",
+    "title": {
+      "fr": "Papier prout",
+      "en": "Papier prout",
+      "ru": "Papier prout"
+    },
+    "originalTitle": "Papier prout",
+    "year": 2015,
+    "releaseDate": "2015-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "FR"
+    ],
+    "region": "france",
+    "genres": [
+      35
+    ],
+    "moods": [
+      "rire"
+    ],
+    "overview": {
+      "fr": "Court métrage de la chaîne YouTube Les Parasites.",
+      "en": "Short film from the French YouTube channel Les Parasites.",
+      "ru": "Короткометражка французского YouTube-канала Les Parasites."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-la-boucherie-ethique-2017",
+    "type": "film",
+    "short": true,
+    "collection": "courts",
+    "section": "Les Parasites (France, YouTube)",
+    "title": {
+      "fr": "La Boucherie éthique",
+      "en": "La Boucherie éthique",
+      "ru": "La Boucherie éthique"
+    },
+    "originalTitle": "La Boucherie éthique",
+    "year": 2017,
+    "releaseDate": "2017-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "FR"
+    ],
+    "region": "france",
+    "genres": [
+      35
+    ],
+    "moods": [
+      "rire"
+    ],
+    "overview": {
+      "fr": "Court métrage de la chaîne YouTube Les Parasites.",
+      "en": "Short film from the French YouTube channel Les Parasites.",
+      "ru": "Короткометражка французского YouTube-канала Les Parasites."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-clown-tueur-chevres-et-apocalypse-2017",
+    "type": "film",
+    "short": true,
+    "collection": "courts",
+    "section": "Les Parasites (France, YouTube)",
+    "title": {
+      "fr": "Clown tueur, chèvres et apocalypse",
+      "en": "Clown tueur, chèvres et apocalypse",
+      "ru": "Clown tueur, chèvres et apocalypse"
+    },
+    "originalTitle": "Clown tueur, chèvres et apocalypse",
+    "year": 2017,
+    "releaseDate": "2017-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "FR"
+    ],
+    "region": "france",
+    "genres": [
+      35
+    ],
+    "moods": [
+      "rire"
+    ],
+    "overview": {
+      "fr": "Court métrage de la chaîne YouTube Les Parasites.",
+      "en": "Short film from the French YouTube channel Les Parasites.",
+      "ru": "Короткометражка французского YouTube-канала Les Parasites."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-transfigure-2021",
+    "type": "film",
+    "short": true,
+    "collection": "trouvailles",
+    "section": "Courts métrages",
+    "title": {
+      "fr": "Transfigure",
+      "en": "Transfigure",
+      "ru": "Transfigure"
+    },
+    "originalTitle": "Transfigure",
+    "year": 2021,
+    "releaseDate": "2021-01-01",
+    "runtime": 4,
+    "seasons": null,
+    "countries": [],
+    "region": "autres",
+    "genres": [
+      27
+    ],
+    "moods": [
+      "frisson"
+    ],
+    "overview": {
+      "fr": "Court métrage d’horreur de Dylan Clark (4 min).",
+      "en": "Horror short film by Dylan Clark (4 min).",
+      "ru": "Короткометражный фильм ужасов Дилана Кларка (4 мин)."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": []
+  },
+  {
+    "id": "x-the-backrooms-2022",
+    "type": "serie",
+    "short": true,
+    "collection": "courts",
+    "section": "Web-séries à épisodes courts",
+    "title": {
+      "fr": "The Backrooms",
+      "en": "The Backrooms",
+      "ru": "The Backrooms"
+    },
+    "originalTitle": "The Backrooms",
+    "year": 2022,
+    "releaseDate": "2022-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "US"
+    ],
+    "region": "amerique-nord",
+    "genres": [
+      27
+    ],
+    "moods": [
+      "frisson"
+    ],
+    "overview": {
+      "fr": "Web-série found footage de Kane Pixels sur YouTube. À voir dans l’ordre, en commençant par « The Backrooms (Found Footage) ».",
+      "en": "Found-footage web series by Kane Pixels on YouTube. Watch in order, starting with “The Backrooms (Found Footage)”.",
+      "ru": "Веб-сериал в жанре найденной плёнки от Kane Pixels на YouTube. Смотреть по порядку, начиная с «The Backrooms (Found Footage)»."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-local-58-2015",
+    "type": "serie",
+    "short": true,
+    "collection": "courts",
+    "section": "Web-séries à épisodes courts",
+    "title": {
+      "fr": "Local 58",
+      "en": "Local 58",
+      "ru": "Local 58"
+    },
+    "originalTitle": "Local 58",
+    "year": 2015,
+    "releaseDate": "2015-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "US"
+    ],
+    "region": "amerique-nord",
+    "genres": [
+      27
+    ],
+    "moods": [
+      "frisson"
+    ],
+    "overview": {
+      "fr": "Web-série d’horreur analogique de Kris Straub sur YouTube.",
+      "en": "Analog horror web series by Kris Straub on YouTube.",
+      "ru": "Аналоговый хоррор-веб-сериал Криса Страуба на YouTube."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
+  },
+  {
+    "id": "x-le-chagrin-et-la-pitie-1969",
+    "type": "film",
+    "short": false,
+    "collection": "culture",
+    "section": "Documentaires",
+    "title": {
+      "fr": "Le Chagrin et la Pitié",
+      "en": "The Sorrow and the Pity",
+      "ru": "Печаль и жалость"
+    },
+    "originalTitle": "Le Chagrin et la Pitié",
+    "year": 1969,
+    "releaseDate": "1969-01-01",
+    "runtime": 251,
+    "seasons": null,
+    "countries": [
+      "FR"
+    ],
+    "region": "france",
+    "genres": [
+      99,
+      36
+    ],
+    "moods": [
+      "apprendre"
+    ],
+    "overview": {
+      "fr": "Documentaire de Marcel Ophuls sur la vie à Clermont-Ferrand sous l’Occupation.",
+      "en": "Marcel Ophuls’ documentary about life in Clermont-Ferrand under the German occupation.",
+      "ru": "Документальный фильм Марселя Офюльса о жизни в Клермон-Ферране во время оккупации."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": []
   }
 ]

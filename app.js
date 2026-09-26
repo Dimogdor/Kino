@@ -57,6 +57,7 @@ const S = {
   busy: false,
   pending: false,
   pendingJoin: null,
+  onboard: !store.get('kino.onboarded', false),
 };
 
 // ---------- Titres ----------
@@ -84,7 +85,7 @@ function searchKey(x) {
 
 const me = () => S.members.find(m => m.id === S.mid);
 const member = id => S.members.find(m => m.id === id);
-const who = id => (member(id) ? `${member(id).emoji} ${esc(member(id).name)}` : '—');
+const who = id => (member(id) ? `${esc(member(id).emoji)} ${esc(member(id).name)}` : '—');
 const ordered = () => [...S.members].sort((a, b) => a.order - b.order);
 const hiddenSet = () => new Set(S.group?.hidden || []);
 const groupWants = () => new Set(S.members.flatMap(m => m.wants || []));
@@ -104,6 +105,8 @@ const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 36
 const flag = code => (/^[A-Z]{2}$/.test(code) && !OLD_COUNTRIES.includes(code) ? String.fromCodePoint(...[...code].map(c => 0x1f1a5 + c.charCodeAt(0))) : '');
 const decadeText = d => t('fmt.decade', { d });
 const country = () => store.get('kino.country', 'FR');
+// Chemin d'image TMDB (« /abc123.jpg ») ; tout autre texte est refusé
+const img = path => (/^\/[\w.-]+$/.test(path || '') ? path : null);
 
 function runtimeText(min) {
   if (!min) return '';
@@ -119,13 +122,13 @@ function countryName(code) {
   try { return new Intl.DisplayNames([lang], { type: 'region' }).of(code); } catch { return code; }
 }
 
-const meta = x =>
+const meta = x => esc(
   [x.year, x.type === 'serie' ? t('fiche.seasons', { n: x.seasons || '?' }) : runtimeText(x.runtime), x.type === 'serie' ? t('badge.serie') : '']
-    .filter(Boolean).join(' · ');
+    .filter(Boolean).join(' · '));
 
 function poster(x, size = 'w342') {
-  return x.poster
-    ? `<img src="${IMG}${size}${x.poster}" loading="lazy" alt="">`
+  return img(x.poster)
+    ? `<img src="${IMG}${size}${img(x.poster)}" loading="lazy" alt="">`
     : `<div class="gen" style="--h:${hue(x.id)}"><span>${esc(nameOf(x))}</span></div>`;
 }
 
@@ -141,7 +144,7 @@ function badges(x) {
 
 const card = (x, act = 'open') => `<button class="card" data-act="${act}" data-id="${esc(x.id)}">
   <span class="poster">${poster(x)}<span class="badges">${badges(x)}</span></span>
-  <span class="card-title">${esc(nameOf(x))}</span><span class="card-year">${x.year || ''}</span></button>`;
+  <span class="card-title">${esc(nameOf(x))}</span><span class="card-year">${esc(x.year || '')}</span></button>`;
 
 const chip = (label, on, act, value) => `<button type="button" class="chip ${on ? 'on' : ''}" data-act="${act}" data-v="${esc(value)}" aria-pressed="${on}">${label}</button>`;
 const moodLabel = m => `${M.MOOD_EMOJI[m]} ${t('moods.' + m)}`;
@@ -179,7 +182,8 @@ function render() {
   document.documentElement.lang = lang;
   $('#top').innerHTML = topBar();
   $('#banners').innerHTML = banners();
-  $('#main').innerHTML = VIEWS[S.tab]();
+  $('#main').innerHTML = S.onboard ? onboardView() : VIEWS[S.tab]();
+  document.body.classList.toggle('onboarding', S.onboard);
   $('#nav').innerHTML = navBar();
   $('#sheet').innerHTML = S.sheet ? SHEETS[S.sheet.type]() : '';
   if (sheetTop && $('.sheet')) $('.sheet').scrollTop = sheetTop;
@@ -191,7 +195,7 @@ function topBar() {
   const select = S.groups.length && S.db
     ? `<select class="group-select" data-change="switch-group" aria-label="${t('group.select')}">${options(S.groups.map(g => g.groupId), S.gid, id => S.groups.find(g => g.groupId === id).name || '…')}</select>`
     : '';
-  return `<span class="brand">🎬 Kino</span>${select}`;
+  return `<span class="brand"><span>🎬</span><b>Kino</b></span>${select}`;
 }
 
 function banners() {
@@ -200,6 +204,19 @@ function banners() {
   if (s && S.tab !== 'tonight') html += `<button class="banner live" data-act="open-session">${t('session.live')} — ${t('session.join')}</button>`;
   return html;
 }
+
+// Premier lancement : langue de l'appli et pays pour « Où le voir »
+const DEFAULT_COUNTRY = { fr: 'FR', ru: 'RU', en: 'US' };
+const onboardView = () => `<section class="onboard">
+  <div class="logo-big">🎬</div>
+  <h1>Kino</h1>
+  <p class="muted">Bienvenue · Welcome · Добро пожаловать</p>
+  <h3>${t('onboard.lang')}</h3>
+  <div class="lang-pick">${LANGS.map(l => `<button class="lang-btn ${l === lang ? 'on' : ''}" data-act="onboard-lang" data-v="${l}">
+    <span>${{ en: '🇬🇧', fr: '🇫🇷', ru: '🇷🇺' }[l]}</span>${t('langs.' + l)}</button>`).join('')}</div>
+  <label>${t('settings.country')}<select data-change="country">${options(WATCH_COUNTRIES, country(), c => `${flag(c)} ${countryName(c)}`)}</select></label>
+  <button class="btn primary big" data-act="onboard-done">${t('onboard.go')}</button>
+</section>`;
 
 const toRate = () => S.history.filter(e => e.participants.includes(S.mid) && e.status === 'vu' && !e.ratings?.[S.mid]);
 
@@ -242,7 +259,7 @@ function tonightView() {
     ${today ? `<button class="last-pick" data-act="open" data-id="${esc(last.titleId)}">✅ ${t('tonight.picked')} <b>${esc(nameOf(title(last.titleId)))}</b></button>` : ''}
     <section class="hero">
       <div class="logo">🍿</div>
-      ${chooser ? `<p class="turn">${t('turn', { name: `${chooser.emoji} ${esc(chooser.name)}` })}</p>` : ''}
+      ${chooser ? `<p class="turn">${t('turn', { name: `${esc(chooser.emoji)} ${esc(chooser.name)}` })}</p>` : ''}
       <button class="btn primary big" data-act="launch-open">${t('launch.open')}</button>
     </section>`;
 }
@@ -266,7 +283,7 @@ function joinView() {
   if (J.loading) return `<p class="center muted">${t('loading')}</p>`;
   if (J.invalid) return `<section class="welcome"><p>${t('join.invalid')}</p><button class="btn" data-act="join-cancel">${t('back')}</button></section>`;
   return `<section class="welcome"><h2>${t('join.title', { name: esc(J.name) })}</h2>
-    ${J.members.map(m => `<button class="btn big" data-act="join-as" data-id="${esc(m.id)}">${t('join.itsMe', { name: `${m.emoji} ${esc(m.name)}` })}</button>`).join('')}
+    ${J.members.map(m => `<button class="btn big" data-act="join-as" data-id="${esc(m.id)}">${t('join.itsMe', { name: `${esc(m.emoji)} ${esc(m.name)}` })}</button>`).join('')}
     <form class="form" data-submit="join-new"><h3>${t('join.new')}</h3>
       <label>${t('form.yourName')}<input name="name" required maxlength="20" autocomplete="given-name"></label>
       ${emojiPicker(EMOJIS[J.members.length % EMOJIS.length])}
@@ -308,9 +325,9 @@ function launchView() {
   const toggle = (key, label) => `<label class="switch"><input type="checkbox" data-change="launch-toggle" name="${key}" ${f[key] ? 'checked' : ''}><span>${label}</span></label>`;
   const size = (key, list) => `<div class="chips">${list.map(n => chip(t(key === 'deckSize' ? 'launch.cards' : 'launch.titles', { n }), L[key] === n, 'launch-size', `${key}:${n}`)).join('')}</div>`;
   return `<section class="form launch">
-    ${chooser ? `<p class="turn">${t('turn', { name: `${chooser.emoji} ${esc(chooser.name)}` })}</p>` : ''}
+    ${chooser ? `<p class="turn">${t('turn', { name: `${esc(chooser.emoji)} ${esc(chooser.name)}` })}</p>` : ''}
     <h3>1. ${t('launch.participants')}</h3>
-    <div class="chips wrap">${ordered().map(m => chip(`${m.emoji} ${esc(m.name)}`, L.participants.includes(m.id), 'launch-participant', m.id)).join('')}</div>
+    <div class="chips wrap">${ordered().map(m => chip(`${esc(m.emoji)} ${esc(m.name)}`, L.participants.includes(m.id), 'launch-participant', m.id)).join('')}</div>
     <h3>2. ${t('launch.mode')}</h3>
     <div class="modes">${['swipe', 'duel', 'roulette'].map(mode => `<button type="button" class="mode-card ${L.mode === mode ? 'on' : ''}" data-act="launch-mode" data-v="${mode}">
       <b>${MODE_ICON[mode]} ${t('mode.' + mode)}</b><span>${t('mode.' + mode + 'Help')}</span></button>`).join('')}</div>
@@ -422,7 +439,7 @@ function resultView(s) {
   const x = title(s.result);
   const canJoker = isParticipant(s) && M.hasJoker(me());
   const canReroll = s.mode === 'roulette' && s.chooserId === S.mid && !s.rerollUsed;
-  const jokers = (s.jokers || []).map(j => `${member(j.memberId)?.emoji || '🃏'} ${esc(nameOf(title(j.titleId)))}`).join(', ');
+  const jokers = (s.jokers || []).map(j => `${esc(member(j.memberId)?.emoji || '🃏')} ${esc(nameOf(title(j.titleId)))}`).join(', ');
   return `<section class="result">
     <p class="eyebrow">${t('result.tonight')}</p>
     <button class="result-poster" data-act="open" data-id="${esc(x.id)}">${poster(x, 'w780')}</button>
@@ -449,7 +466,7 @@ function swipeChoiceView(s) {
   const liked = s.liked.filter(id => !rejected.includes(id));
   const ranking = s.ranking.filter(id => !rejected.includes(id)).slice(0, 10);
   return `<h2 class="center">${t('swipe.noMatch')}</h2>
-    <ol class="ranking">${ranking.map(id => `<li><button class="link" data-act="open" data-id="${esc(id)}">${esc(nameOf(title(id)))}</button><b>${s.yes[id] || 0} ♥</b></li>`).join('')}</ol>
+    <ol class="ranking">${ranking.map(id => `<li><button class="link" data-act="open" data-id="${esc(id)}">${esc(nameOf(title(id)))}</button><b>${esc(s.yes[id] || 0)} ♥</b></li>`).join('')}</ol>
     ${isParticipant(s) ? `<div class="row">${liked.length ? `<button class="btn" data-act="liked-roulette">🎡 ${t('swipe.roulette', { n: liked.length })}</button>` : ''}
       <button class="btn primary" data-act="new-deck">${t('swipe.newDeck')}</button></div>` : ''}`;
 }
@@ -650,12 +667,13 @@ function titleSheet() {
   const length = x.type === 'serie'
     ? [t('fiche.seasons', { n: x.seasons || '?' }), x.runtime ? t('fiche.episode', { d: runtimeText(x.runtime) }) : ''].filter(Boolean).join(' · ')
     : runtimeText(x.runtime);
-  const facts = [x.originalTitle && x.originalTitle !== nameOf(x) ? `<i>${esc(x.originalTitle)}</i>` : '', x.year, length, x.rating ? `★ ${num(x.rating)} TMDB` : '']
+  const facts = [x.originalTitle && x.originalTitle !== nameOf(x) ? `<i>${esc(x.originalTitle)}</i>` : '', esc(x.year), esc(length), x.rating ? `★ ${num(x.rating)} TMDB` : '']
     .filter(Boolean).join(' · ');
   const countries = (x.countries || []).map(c => `${flag(c)} ${esc(countryName(c))}`).join(', ');
   const genres = (x.genres || []).map(g => t('genres')[g]).filter(Boolean).join(', ');
-  const faces = list => list.map(p => `<span title="${esc(p.name)}">${p.emoji}</span>`).join(' ') || '—';
-  return sheetWrap(`<div class="fiche-poster">${poster(x, 'w780')}</div>
+  const faces = list => list.map(p => `<span title="${esc(p.name)}">${esc(p.emoji)}</span>`).join(' ') || '—';
+  return sheetWrap(`${img(x.poster) ? `<div class="fiche-bg" style="background-image:url(${IMG}w342${img(x.poster)})"></div>` : ''}
+    <div class="fiche-poster">${poster(x, 'w780')}</div>
     <h2>${esc(nameOf(x))}</h2>
     <p class="muted">${facts}</p>
     <div class="chips wrap">${badges(x)}</div>
@@ -686,7 +704,7 @@ function providersView(x) {
   if (!data || data === 'loading') return `<section class="providers"><h3>${t('providers.title', { country: esc(countryName(country())) })}</h3><p class="muted small">${t('loading')}</p></section>`;
   const unique = list => [...new Map(list.map(p => [p.provider_id, p])).values()];
   const row = (label, list) => (list.length ? `<p class="label">${label}</p><div class="logos">${list.map(p =>
-    `<span class="logo-item"><img src="${IMG}w92${p.logo_path}" alt="" loading="lazy"><small>${esc(p.provider_name)}</small></span>`).join('')}</div>` : '');
+    `<span class="logo-item"><img src="${IMG}w92${img(p.logo_path)}" alt="" loading="lazy"><small>${esc(p.provider_name)}</small></span>`).join('')}</div>` : '');
   const stream = unique([...(data.flatrate || []), ...(data.free || []), ...(data.ads || [])]);
   const buy = unique([...(data.rent || []), ...(data.buy || [])]);
   return `<section class="providers"><h3>${t('providers.title', { country: esc(countryName(country())) })}</h3>
@@ -736,7 +754,7 @@ function tmdbResults() {
     const id = (r.media_type === 'movie' ? 'm' : 't') + r.id;
     const date = r.release_date || r.first_air_date || '';
     return `<li><button class="result-item" data-act="add-tmdb" data-kind="${r.media_type}" data-tmdb="${r.id}">
-      ${r.poster_path ? `<img src="${IMG}w92${r.poster_path}" alt="" loading="lazy">` : '<span class="noimg">🎬</span>'}
+      ${img(r.poster_path) ? `<img src="${IMG}w92${img(r.poster_path)}" alt="" loading="lazy">` : '<span class="noimg">🎬</span>'}
       <span><b>${esc(r.title || r.name)}</b><br><small class="muted">${date.slice(0, 4)} · ${t(r.media_type === 'movie' ? 'types.film' : 'types.serie')}${byId.has(id) ? ' · ✓ ' + t('add.already') : ''}</small></span>
     </button></li>`;
   }).join('')}</ul>`;
@@ -844,7 +862,7 @@ function groupView() {
   const list = ordered();
   return `<section><h2>${esc(S.group.name)}</h2>
       <ul class="members">${list.map((x, i) => `<li>
-        <span class="emoji">${x.emoji}</span>
+        <span class="emoji">${esc(x.emoji)}</span>
         <span class="name">${esc(x.name)}${x.id === S.mid ? ` <small class="muted">(${t('group.you')})</small>` : ''}<br>
           <small class="${M.hasJoker(x) ? 'ok' : 'muted'}">🃏 ${t(M.hasJoker(x) ? 'group.jokerYes' : 'group.jokerNo')}</small></span>
         <button class="icon" data-act="member-move" data-id="${esc(x.id)}" data-v="-1" ${i ? '' : 'disabled'} aria-label="${t('group.up')}">↑</button>
@@ -1014,8 +1032,11 @@ async function exportData() {
 }
 
 async function importData(file) {
-  const data = JSON.parse(await file.text());
-  if (data.kino !== 1 || !data.group) return toast(t('backup.invalid'));
+  if (file.size > 5e6) return toast(t('backup.invalid'));
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { return toast(t('backup.invalid')); }
+  const lists = ['members', 'titles', 'history'].every(k => Array.isArray(data[k] || []) && (data[k] || []).every(d => typeof d?.id === 'string' && /^[\w-]+$/.test(d.id)));
+  if (data.kino !== 1 || typeof data.group?.name !== 'string' || !lists) return toast(t('backup.invalid'));
   if (!confirm(t('backup.confirm', { name: S.group.name }))) return;
   await S.db.importGroup(S.gid, data);
   toast(t('backup.done'));
@@ -1039,6 +1060,17 @@ const ACTIONS = {
     scrollTo(0, same ? 0 : S.scroll[S.tab] || 0);
   },
   open: el => openTitle(el.dataset.id),
+  'onboard-lang': el => {
+    setLang(el.dataset.v);
+    store.set('kino.country', DEFAULT_COUNTRY[el.dataset.v]);
+    render();
+  },
+  'onboard-done': () => {
+    store.set('kino.onboarded', true);
+    if (!localStorage.getItem('kino.lang')) setLang(lang);
+    S.onboard = false;
+    render();
+  },
   'close-sheet': closeSheet,
 
   // Catalogue

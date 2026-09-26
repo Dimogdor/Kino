@@ -1,0 +1,24 @@
+# Régénère data/titles.json et data/catalogue.json (bouton « Run workflow » dans l'onglet Actions).
+name: Régénérer le catalogue
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: node scripts/md-to-titles.mjs
+      - run: node scripts/build-catalogue.mjs
+        env:
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+      - name: Enregistrer le catalogue
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || (git commit -m "Catalogue régénéré" && git push)
