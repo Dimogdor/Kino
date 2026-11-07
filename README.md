@@ -14,7 +14,9 @@ Pas de streaming, pas de liens. Site statique gratuit (GitHub Pages) + Firebase 
 | `i18n.js` | textes en 8 langues : français, anglais, espagnol, italien, portugais, allemand, russe, arabe (+ tutoriel) |
 | `config.js` | vide dans le dépôt, rempli au déploiement depuis les secrets GitHub |
 | `firestore.rules` | règles de sécurité à coller dans Firebase |
-| `scripts/write-config.mjs`, `.github/workflows/` | déploiement automatique et régénération du catalogue |
+| `scripts/write-config.mjs`, `.github/workflows/` | déploiement automatique (après les tests) et régénération du catalogue |
+| `tests/` | tests automatiques : logique des jeux, 8 langues complètes, intégrité du catalogue |
+| `.github/dependabot.yml` | propose chaque mois les nouvelles versions des actions GitHub |
 | `manifest.webmanifest`, `sw.js`, `icons/` | appli installable et catalogue hors ligne |
 | `data/titles.json` | les 740 titres de la section 13 (généré) |
 | `data/overrides.json`, `data/manual.json` | corrections manuelles du catalogue |
@@ -53,7 +55,7 @@ Les titres introuvables sont listés dans `data/unresolved.txt` : ajoute leur id
 
 ### 5. C'est parti
 Ouvre le site sur ton téléphone → choisis la langue → **Créer un groupe** → onglet **Groupe** → **Inviter**.
-Menu du navigateur → **Ajouter à l'écran d'accueil** pour l'installer comme une appli.
+Pour l'installer comme une appli : onglet **Groupe** → **Installer l'appli** (Android, ordinateur), ou sur iPhone **Partager** → **Sur l'écran d'accueil**.
 
 ## Sécurité
 
@@ -66,6 +68,9 @@ Menu du navigateur → **Ajouter à l'écran d'accueil** pour l'installer comme 
 - **Page** : politique de sécurité du contenu (CSP) qui n'autorise que les scripts du site et de Firebase, textes échappés avant affichage,
   chemins d'images vérifiés, sauvegardes JSON contrôlées avant import.
 - **TMDB** : clé en lecture seule ; en cas d'abus, régénère-la sur themoviedb.org et mets à jour le secret `TMDB_KEY`.
+- **Déploiement** : le code est vérifié et testé avant chaque mise en ligne ; si un test échoue, l'ancienne version reste en ligne.
+- **Pour aller encore plus loin (facultatif)** : Firebase → **App Check** avec reCAPTCHA Enterprise empêche les scripts qui ne passent pas par le site
+  d'utiliser ton projet. Demande-le-moi si tu veux l'activer : il faut créer une clé reCAPTCHA dans la console Google.
 
 ## Utilisation au quotidien
 
@@ -76,12 +81,17 @@ Menu du navigateur → **Ajouter à l'écran d'accueil** pour l'installer comme 
 - **Soirée** : Ce soir → Lancer une soirée → participants, mode, filtres → Lancer. Les autres voient « Soirée en cours — Rejoindre » en ouvrant l'appli (pas de notification : prévenez-vous par message).
 - **Joker** : 1 par personne et par mois, remis à zéro le 1er du mois.
 - **Sauvegarde** : onglet Groupe → Exporter (fichier JSON) / Importer.
+- **Réseau faible** : les données du groupe restent en mémoire sur le téléphone ; l'appli s'ouvre avec ton groupe même hors ligne et se synchronise au retour du réseau.
 
 ## Ajouter des titres à la liste de base
 
 1. Ajoute les lignes dans la section 13 de `kino-contexte.md` (et mets à jour les totaux de 13.2).
 2. `node scripts/md-to-titles.mjs` (vérifie que les totaux correspondent à 13.2).
 3. Onglet **Actions** → « Régénérer le catalogue » → **Run workflow** (ou en local : `TMDB_KEY=ta-clé node scripts/build-catalogue.mjs`).
+
+## Tests
+
+`node --test tests/*.test.mjs` (Node 22 ou plus) : logique des jeux, langues, catalogue. GitHub les lance avant chaque déploiement.
 
 ## Tester sur ton ordinateur
 

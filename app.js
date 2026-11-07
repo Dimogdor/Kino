@@ -12,6 +12,9 @@ const MODE_ICON = { swipe: '👆', duel: '⚔️', roulette: '🎡' };
 const TABS = { tonight: '🎬', catalogue: '📚', history: '🕘', group: '👥' };
 const OLD_COUNTRIES = ['SU', 'XC', 'YU', 'XG', 'ZR'];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+let installPrompt = null; // proposition d'installation (Android / ordinateur), gardée pour le bouton « Installer »
 
 const $ = selector => document.querySelector(selector);
 const store = {
@@ -86,7 +89,7 @@ async function loadResumes(l) {
     const res = await fetch(`data/resumes/${l}.json`);
     if (!res.ok) throw new Error(res.status);
     resumes[l] = await res.json();
-    render();
+    scheduleRender();
   } catch {
     delete resumes[l];
   }
@@ -153,16 +156,24 @@ const meta = x =>
 
 function poster(x, size = 'w342') {
   return img(x.poster)
-    ? `<img src="${IMG}${size}${img(x.poster)}" loading="lazy" alt="">`
+    ? `<img src="${IMG}${size}${img(x.poster)}" loading="lazy" decoding="async" alt="">`
     : `<div class="gen" style="--h:${hue(x.id)}"><span>${esc(nameOf(x))}</span></div>`;
 }
+
+// Envies du groupe et déjà vus, recalculés seulement quand les membres changent (740 cartes à badger)
+let cardCache = {};
+const cardCtx = () => {
+  if (cardCache.members !== S.members || cardCache.mid !== S.mid) cardCache = { members: S.members, mid: S.mid, wants: groupWants(), seen: mySeen() };
+  return cardCache;
+};
 
 function badges(x) {
   const out = [];
   if (x.type === 'serie') out.push(`<span class="badge">${t('badge.serie')}</span>`);
   if (x.short) out.push(`<span class="badge">${t('badge.short')}</span>`);
   if (M.isSoon(x)) out.push(`<span class="badge soon">${t('badge.soon')}</span>`);
-  const icons = (S.members.some(m => (m.wants || []).includes(x.id)) ? '❤️' : '') + ((me()?.seen || []).includes(x.id) ? '👁' : '');
+  const c = cardCtx();
+  const icons = (c.wants.has(x.id) ? '❤️' : '') + (c.seen.has(x.id) ? '👁' : '');
   if (icons) out.push(`<span class="badge icons">${icons}</span>`);
   return out.join('');
 }
@@ -180,6 +191,35 @@ const emojiPicker = current => `<div class="emoji-pick">${EMOJIS.map(e =>
 
 const options = (list, value, label) => list.map(v => `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(label(v))}</option>`).join('');
 
+// Boîte de confirmation intégrée et traduite, à la place de celle du navigateur
+function ask(message) {
+  return new Promise(resolve => {
+    const box = $('#dialog');
+    const before = document.activeElement;
+    box.innerHTML = `<div class="backdrop"></div><div class="dialog" role="alertdialog" aria-modal="true" aria-describedby="dialog-msg">
+      <p id="dialog-msg">${esc(message)}</p>
+      <div class="row"><button class="btn" data-answer="0">${t('cancel')}</button><button class="btn primary" data-answer="1">${t('confirmBtn')}</button></div></div>`;
+    const done = answer => {
+      box.innerHTML = '';
+      box.onclick = null;
+      removeEventListener('keydown', onKey, true);
+      before?.focus?.({ preventScroll: true });
+      resolve(answer);
+    };
+    const onKey = e => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      done(false);
+    };
+    box.onclick = e => {
+      const b = e.target.closest('[data-answer]');
+      if (b || e.target.classList.contains('backdrop')) done(b?.dataset.answer === '1');
+    };
+    addEventListener('keydown', onKey, true);
+    box.querySelector('.primary').focus();
+  });
+}
+
 let toastTimer;
 function toast(message) {
   const el = $('#toast');
@@ -195,6 +235,17 @@ const typing = () => {
   const a = document.activeElement;
   return a?.tagName === 'TEXTAREA' || (a?.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'file', 'button', 'submit'].includes(a.type));
 };
+
+// Plusieurs mises à jour en temps réel arrivent souvent ensemble : un seul rendu par image
+let renderQueued = false;
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
+}
 
 // Redessine tout l'écran ; attend la fin d'une saisie, d'un glissement ou d'une animation
 function render() {
@@ -292,17 +343,20 @@ function goToStep(k) {
 
 const toRate = () => S.history.filter(e => e.participants.includes(S.mid) && e.status === 'vu' && !e.ratings?.[S.mid]);
 
-const navBar = () => Object.entries(TABS).map(([id, icon]) => `<button class="tab ${S.tab === id ? 'on' : ''}" data-act="tab" data-tab="${id}">
+const navBar = () => Object.entries(TABS).map(([id, icon]) => `<button class="tab ${S.tab === id ? 'on' : ''}" data-act="tab" data-tab="${id}" ${S.tab === id ? 'aria-current="page"' : ''}>
   <span class="ico">${icon}${id === 'history' && toRate().length ? '<i class="dot"></i>' : ''}</span>${t('tab.' + id)}</button>`).join('');
 
 const sheetWrap = inner => `<div class="backdrop" data-act="close-sheet"></div>
-  <section class="sheet" role="dialog" aria-modal="true"><button class="close" data-act="close-sheet" aria-label="${t('close')}">✕</button>${inner}</section>`;
+  <section class="sheet" role="dialog" aria-modal="true" tabindex="-1"><button class="close" data-act="close-sheet" aria-label="${t('close')}">✕</button>${inner}</section>`;
 
 function openSheet(sheet) {
   if (!S.sheet) history.pushState({ sheet: true }, '');
   S.sheet = sheet;
   render();
-  if ($('.sheet')) $('.sheet').scrollTop = 0;
+  if ($('.sheet')) {
+    $('.sheet').scrollTop = 0;
+    $('.sheet').focus({ preventScroll: true });
+  }
 }
 
 function closeSheet() {
@@ -431,7 +485,7 @@ async function launch() {
   const pool = poolFor(L.f, L.participants);
   if (pool.length < M.minPoolSize(L.mode, launchSize(L))) return toast(t('launch.notEnough', { n: pool.length }));
   const active = S.sessions.map(s => s.id);
-  if (active.length && !confirm(t('launch.replace'))) return;
+  if (active.length && !(await ask(t('launch.replace')))) return;
   const wanted = M.wantedBy(S.members, L.participants);
   const data = {
     mode: L.mode, status: 'vote', createdBy: S.mid, participants: L.participants,
@@ -591,7 +645,7 @@ function checkProgress() {
 
 async function swipe(yes) {
   const s = activeSession();
-  const id = s && nextCard(s);
+  const id = s?.status === 'vote' && s.mode === 'swipe' && nextCard(s);
   if (!id) return;
   const v = S.votes[S.mid] || {};
   const swipes = { ...(v.swipe || {}), [id]: yes };
@@ -604,7 +658,9 @@ async function swipe(yes) {
 
 async function duelVote(i, id) {
   const s = activeSession();
-  const r = s.round;
+  const r = s?.round;
+  const d = s?.status === 'vote' && s.mode === 'duel' && s.bracket[r]?.duels[i];
+  if (!d || (d.a !== id && d.b !== id)) return;
   const v = S.votes[S.mid] || {};
   S.votes = { ...S.votes, [S.mid]: { ...v, duel: { ...(v.duel || {}), [r]: { ...(v.duel?.[r] || {}), [i]: id } } } };
   buzz();
@@ -797,7 +853,7 @@ async function loadProviders(x, key) {
   } catch {
     S.providers[key] = {};
   }
-  render();
+  scheduleRender();
 }
 
 // ---------- Ajouter un titre ----------
@@ -844,6 +900,8 @@ function searchTmdb(q) {
   searchTimer = setTimeout(async () => {
     if (!q.trim()) S.sheet.results = null;
     else {
+      S.sheet.searching = true;
+      if ($('#tmdb-results')) $('#tmdb-results').innerHTML = tmdbResults();
       try {
         const data = await tmdbGet('/search/multi', { query: q, language: M.TMDB_LANGS[lang], include_adult: 'false' });
         if (S.sheet?.type !== 'add' || S.sheet.q !== q) return;
@@ -851,6 +909,7 @@ function searchTmdb(q) {
       } catch {
         toast(t('error.network'));
       }
+      if (S.sheet?.type === 'add') S.sheet.searching = false;
     }
     if ($('#tmdb-results')) $('#tmdb-results').innerHTML = tmdbResults();
   }, 350);
@@ -862,6 +921,7 @@ async function addFromTmdb(kind, tmdbId) {
     toast(t('add.exists'));
     return openTitle(id);
   }
+  toast(t('loading'));
   const details = {};
   await Promise.all(Object.entries(M.TMDB_LANGS).map(async ([l, code]) => (details[l] = await tmdbGet(`/${kind}/${tmdbId}`, { language: code }))));
   await saveNewTitle(M.tmdbEntry(kind, details));
@@ -891,7 +951,10 @@ function historyView() {
 function entryView(e) {
   const x = title(e.titleId);
   const avg = M.entryAverage(e);
-  const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const stars = n => {
+    const k = Math.max(0, Math.min(5, Math.round(+n) || 0));
+    return '★'.repeat(k) + '☆'.repeat(5 - k);
+  };
   const lines = e.participants.map(m => `<li>${who(m)} <span class="stars">${e.ratings?.[m] ? stars(e.ratings[m]) : `<span class="muted">${t('history.notRated')}</span>`}</span>
     ${e.comments?.[m] ? `<q>${esc(e.comments[m])}</q>` : ''}</li>`).join('');
   const mine = e.participants.includes(S.mid) ? `<div class="rate"><span>${t('history.yourRating')}</span>${[1, 2, 3, 4, 5].map(n =>
@@ -929,6 +992,7 @@ function groupView() {
     <label>${t('settings.lang')}<select data-change="lang">${options(LANGS, lang, l => `${LANG_FLAG[l]} ${t('langs.' + l)}`)}</select></label>
     ${tmdbKey ? `<label>${t('settings.country')}<select data-change="country">${options(WATCH_COUNTRIES, country(), c => `${flag(c)} ${countryName(c)}`)}</select></label>` : ''}
     <button class="btn" data-act="tuto-open">📖 ${t('tuto.again')}</button>
+    ${installPrompt ? `<button class="btn primary" data-act="install">📲 ${t('settings.install')}</button>` : IOS && !standalone() ? `<p class="muted small">📲 ${t('settings.installIos')}</p>` : ''}
   </section>`;
   const about = `<section class="about"><h3>${t('about.title')}</h3>
     <p>${t('about.text')}</p>
@@ -1005,28 +1069,28 @@ function selectGroup(gid) {
           saved.name = g.name;
           saveGroups();
         }
-        render();
+        scheduleRender();
       },
       members: (list, fromCache) => {
         S.members = list;
         if (!fromCache && !me()) return removedFromGroup();
         checkProgress();
-        render();
+        scheduleRender();
       },
       titles: list => {
         S.added = list;
         reindex();
-        render();
+        scheduleRender();
       },
       sessions: list => {
         S.sessions = list;
         watchVotes();
         checkProgress();
-        render();
+        scheduleRender();
       },
       history: list => {
         S.history = list;
-        render();
+        scheduleRender();
       },
       error: () => toast(t('error.network')),
     });
@@ -1043,7 +1107,7 @@ function watchVotes() {
   S.stopVotes = s ? S.db.listenVotes(S.gid, s.id, v => {
     S.votes = v;
     checkProgress();
-    render();
+    scheduleRender();
   }) : null;
 }
 
@@ -1115,7 +1179,7 @@ async function importData(file) {
   try { data = JSON.parse(await file.text()); } catch { return toast(t('backup.invalid')); }
   const lists = ['members', 'titles', 'history'].every(k => Array.isArray(data[k] || []) && (data[k] || []).every(d => typeof d?.id === 'string' && /^[\w-]+$/.test(d.id)));
   if (data.kino !== 1 || typeof data.group?.name !== 'string' || !lists) return toast(t('backup.invalid'));
-  if (!confirm(t('backup.confirm', { name: S.group.name }))) return;
+  if (!(await ask(t('backup.confirm', { name: S.group.name })))) return;
   await S.db.importGroup(S.gid, data);
   toast(t('backup.done'));
 }
@@ -1253,14 +1317,14 @@ const ACTIONS = {
     render();
   },
   'session-cancel': async () => {
-    if (confirm(t('session.cancelConfirm'))) await S.db.updateSession(S.gid, sessionNow().id, { status: 'cancelled' });
+    if (await ask(t('session.cancelConfirm'))) await S.db.updateSession(S.gid, sessionNow().id, { status: 'cancelled' });
   },
   swipe: el => swipe(el.dataset.v === '1'),
   'swipe-force': () => closeSwipe(sessionNow()),
   'duel-vote': el => duelVote(+el.dataset.i, el.dataset.id),
   'duel-force': () => closeDuelRound(sessionNow()),
   pick: async el => {
-    if (confirm(t('swipe.pickConfirm', { name: nameOf(title(el.dataset.id)) }))) await S.db.updateSession(S.gid, sessionNow().id, { result: el.dataset.id });
+    if (await ask(t('swipe.pickConfirm', { name: nameOf(title(el.dataset.id)) }))) await S.db.updateSession(S.gid, sessionNow().id, { result: el.dataset.id });
   },
   'pick-random': async () => {
     const s = sessionNow();
@@ -1295,7 +1359,7 @@ const ACTIONS = {
   },
   joker: async () => {
     const s = sessionNow();
-    if (!confirm(t('result.jokerConfirm'))) return;
+    if (!(await ask(t('result.jokerConfirm')))) return;
     const ok = await S.db.playJoker(S.gid, s.id, S.mid, M.monthKey(), s.result, cur => M.jokerPatch(cur, S.mid, wantCount(cur)));
     toast(t(ok ? 'result.jokerPlayed' : 'result.changed'));
   },
@@ -1315,7 +1379,7 @@ const ACTIONS = {
   'series-done': el => S.db.finishSeries(S.gid, el.dataset.id),
   'entry-delete': async el => {
     const e = S.history.find(x => x.id === el.dataset.id);
-    if (confirm(t('history.deleteConfirm'))) await S.db.deleteEntry(S.gid, e, e.participants.filter(member));
+    if (await ask(t('history.deleteConfirm'))) await S.db.deleteEntry(S.gid, e, e.participants.filter(member));
   },
   'stats-toggle': (el, ev) => {
     ev.preventDefault();
@@ -1333,11 +1397,11 @@ const ACTIONS = {
     return S.db.reorderMembers(S.gid, ids);
   },
   'member-remove': async el => {
-    if (confirm(t('group.removeConfirm', { name: member(el.dataset.id).name }))) await S.db.removeMember(S.gid, el.dataset.id);
+    if (await ask(t('group.removeConfirm', { name: member(el.dataset.id).name }))) await S.db.removeMember(S.gid, el.dataset.id);
   },
   'switch-group': el => selectGroup(el.dataset.id),
-  'leave-group': () => {
-    if (!confirm(t('group.leaveConfirm', { name: S.group.name }))) return;
+  'leave-group': async () => {
+    if (!(await ask(t('group.leaveConfirm', { name: S.group.name })))) return;
     S.groups = S.groups.filter(g => g.groupId !== S.gid);
     saveGroups();
     selectGroup(S.groups[0]?.groupId || null);
@@ -1353,6 +1417,12 @@ const ACTIONS = {
     render();
   },
   export: exportData,
+  install: async () => {
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    render();
+  },
 };
 
 const CHANGES = {
@@ -1426,13 +1496,22 @@ const SUBMITS = {
   'add-manual': d => saveNewTitle(M.manualEntry({ title: d.title.trim(), year: +d.year, type: d.type, short: !!d.short })),
 };
 
+// Actions lentes (réseau) : un double appui ne doit pas les lancer deux fois
+const GUARDED = new Set(['launch-go', 'validate', 'joker', 'reroll', 'tiebreak', 'liked-roulette', 'new-deck', 'pick', 'pick-random',
+  'add-tmdb', 'export', 'install', 'invite', 'join-as', 'session-cancel', 'entry-delete', 'member-remove', 'leave-group', 'moods-save', 'moods-reset']);
+
 // Toute erreur (réseau, Firebase, TMDB) finit en message court plutôt qu'en écran bloqué
 const safely = fn => Promise.resolve().then(fn).catch(() => toast(t('error.generic')));
 
 function wireEvents() {
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
-    if (el && !el.disabled) safely(() => ACTIONS[el.dataset.act](el, e));
+    if (!el || el.disabled) return;
+    const act = el.dataset.act;
+    if (!GUARDED.has(act)) return safely(() => ACTIONS[act](el, e));
+    if (S.running.has(act)) return;
+    S.running.add(act);
+    safely(() => ACTIONS[act](el, e)).finally(() => S.running.delete(act));
   });
   document.addEventListener('change', e => {
     const el = e.target.closest('[data-change]');
@@ -1445,7 +1524,10 @@ function wireEvents() {
   document.addEventListener('submit', e => {
     e.preventDefault();
     const form = e.target;
-    safely(() => SUBMITS[form.dataset.submit](Object.fromEntries(new FormData(form)), form));
+    const key = `submit:${form.dataset.submit}`;
+    if (S.running.has(key)) return;
+    S.running.add(key);
+    safely(() => SUBMITS[form.dataset.submit](Object.fromEntries(new FormData(form)), form)).finally(() => S.running.delete(key));
   });
   document.addEventListener('pointerdown', e => {
     const el = e.target.closest('.swipe-card');
@@ -1459,6 +1541,14 @@ function wireEvents() {
     }
   });
   document.addEventListener('focusout', () => setTimeout(() => S.pending && render()));
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape' && S.sheet) closeSheet();
+  });
+  addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    scheduleRender();
+  });
   addEventListener('popstate', () => {
     if (!S.sheet) return;
     S.sheet = null;

@@ -671,3 +671,23 @@ main.enter.back .tuto-slide { animation-name: slide-in-back; }
 [dir='rtl'] .fab { right: auto; left: max(16px, env(safe-area-inset-left)); }
 [dir='rtl'] .mini-info { right: auto; left: 4px; }
 [dir='rtl'] .group-select, [dir='rtl'] select { padding-right: 12px; padding-left: 34px; background-position: left 12px center; }
+
+/* ---------- Boîte de confirmation ---------- */
+#dialog .backdrop { z-index: 60; }
+.dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 61;
+  width: min(calc(100vw - 32px), 400px);
+  padding: 20px 18px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: #1d1d25;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+  animation: dialog-in 0.18s ease-out;
+}
+.dialog p { margin: 0 0 8px; font-size: 16px; line-height: 1.5; }
+@keyframes dialog-in { from { opacity: 0; transform: translate(-50%, -46%) scale(0.97); } }
+.sheet:focus { outline: none; }

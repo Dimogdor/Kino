@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
       - run: node scripts/md-to-titles.mjs
       - run: node scripts/build-catalogue.mjs
         env:

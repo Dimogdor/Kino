@@ -1,10 +1,10 @@
 // Firebase : initialisation, lecture/écriture et écoute en temps réel des données d'un groupe.
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
 import {
-  getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where,
   writeBatch, runTransaction, arrayUnion, arrayRemove, serverTimestamp, deleteField, FieldPath, Timestamp,
-} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+} from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 import { firebaseConfig } from './config.js';
 
 let fs;
@@ -15,7 +15,8 @@ export async function connect() {
   if (!fs) {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    fs = getFirestore(app);
+    // Cache local (IndexedDB) : le groupe s'affiche tout de suite à l'ouverture, même avec un réseau faible
+    fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   }
   const { user } = await signInAnonymously(auth);
   return user.uid;
