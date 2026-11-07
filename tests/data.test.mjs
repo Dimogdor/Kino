@@ -38,3 +38,17 @@ test('résumés : un fichier par langue, seulement pour des titres du catalogue'
     assert.ok(Object.values(texts).every(v => typeof v === 'string' && v.length), f);
   }
 });
+
+// Garde-fou contre les mauvaises correspondances TMDB (ex. « Dogma » confondu avec « Festen ») :
+// chaque ligne de la section 13 doit retrouver un titre au nom proche, sauf ces titres sortis sous un autre nom.
+const RENAMED = new Set(['film|Heel|2025', 'film|Les 400 Coups|1959', 'film|Dimensions du dialogue|1982', 'serie|Apocalypse, la 2e Guerre mondiale|2009']);
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+test('chaque titre de la liste correspond au bon film', () => {
+  const wrong = titles.filter(t => !RENAMED.has(t.key)).filter(t => {
+    const names = [t.title, ...(t.vo ? t.vo.split(' / ') : [])].map(norm);
+    return !catalogue.some(c => c.collection === t.collection && c.section === t.section && c.year === t.year &&
+      [...Object.values(c.title), c.originalTitle].map(norm).some(x => x && names.some(y => x.includes(y) || y.includes(x))));
+  });
+  assert.deepEqual(wrong.map(t => t.key), []);
+});
