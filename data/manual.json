@@ -362,5 +362,42 @@
     "poster": null,
     "rating": null,
     "tags": []
+  },
+  {
+    "id": "x-the-mandela-catalogue-2021",
+    "type": "serie",
+    "short": true,
+    "collection": "courts",
+    "section": "Web-séries à épisodes courts",
+    "title": {
+      "fr": "The Mandela Catalogue",
+      "en": "The Mandela Catalogue",
+      "ru": "The Mandela Catalogue"
+    },
+    "originalTitle": "The Mandela Catalogue",
+    "year": 2021,
+    "releaseDate": "2021-01-01",
+    "runtime": null,
+    "seasons": null,
+    "countries": [
+      "US"
+    ],
+    "region": "amerique-nord",
+    "genres": [
+      27
+    ],
+    "moods": [
+      "frisson"
+    ],
+    "overview": {
+      "fr": "Web-série d’horreur analogique d’Alex Kister sur YouTube.",
+      "en": "Analog horror web series by Alex Kister on YouTube.",
+      "ru": "Аналоговый хоррор-веб-сериал Алекса Кистера на YouTube."
+    },
+    "poster": null,
+    "rating": null,
+    "tags": [
+      "web"
+    ]
   }
 ]
