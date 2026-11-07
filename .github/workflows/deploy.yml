@@ -45,6 +45,6 @@ jobs:
           cp -r icons _site/
           cp -r data/catalogue.json data/resumes _site/data/
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
       - id: deployment
         uses: actions/deploy-pages@v4
